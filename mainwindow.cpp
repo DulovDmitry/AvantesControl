@@ -6,6 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
 }
 
 MainWindow::~MainWindow()
@@ -131,7 +132,7 @@ void MainWindow::getLambdas()
         ui->plainTextEdit->appendPlainText("Error occured while lambda values obtaining" + QString(" (%1 code)").arg(getLambdasRes));
 
     ui->data_plainTextEdit->clear();
-    ui->data_plainTextEdit->appendPlainText("Lambda values:");
+    //ui->data_plainTextEdit->appendPlainText("Lambda values:");
     for (int i = 0; i < sizeof(lambdas)/sizeof(double); i++)
         ui->data_plainTextEdit->appendPlainText(QString::number(lambdas[i]));
 }
@@ -254,13 +255,13 @@ void MainWindow::measure(int numberOfMeasures, int dataReceiverDelay)
 void MainWindow::ledOff()
 {
     AVS_SetDigOut(m_DeviceHandle, 0, 0);
-    qDebug() << "off";
+    qDebug() << "pin 11 off";
 }
 
 void MainWindow::ledOn()
 {
     AVS_SetDigOut(m_DeviceHandle, 0, 1);
-    qDebug() << "on";
+    qDebug() << "pin 11 on";
 }
 
 void MainWindow::on_LED_pushButton_clicked()
@@ -377,18 +378,19 @@ void MainWindow::warmUp(const int numberOfCycles)
 }
 
 
-void MainWindow::on_program2_pushButton_clicked()
+void MainWindow::on_program2_pushButton_clicked() // Phosphorescence
 {
-    const int initialIntegrationDelay = 10; // ms
-    const int finalIntegrationDelay = 4000; // ms
+    const int initialIntegrationDelay = ui->initialDelay_spinBox->value(); // ms
+    const int finalIntegrationDelay = ui->finalDelay_spinBox->value(); // ms
     int integrationDelay = initialIntegrationDelay; //ms
-    const int delayIncrement = 200; // ms
-    const int irradiationTime = 2000; // ms
+    const int delayIncrement = ui->delayIncrement_spinBox->value(); // ms
+    const int irradiationTime = ui->exitationTime_spinBox_phos->value(); // ms
 
     int repeatCounter = 0;
-    const int repeatNumber = 5;
+    int filesCounter = 0;
+    const int repeatNumber = ui->repeatNumber_spinBox->value();
 
-    const int integrationTime = 500; // ms
+    const int integrationTime = ui->integrationTime_spinBox_phos->value(); // ms
 
     unsigned timeLabel = 0;
     ui->intergationTime_spinBox->setValue(integrationTime);
@@ -416,6 +418,7 @@ void MainWindow::on_program2_pushButton_clicked()
                 out << QString::number(specData[i]) << Qt::endl;
         }
         file.close();
+        filesCounter++;
 
         if (repeatCounter == repeatNumber - 1)
         {
@@ -424,7 +427,11 @@ void MainWindow::on_program2_pushButton_clicked()
         }
         else
             repeatCounter++;
+
+        QThread::msleep(50);
     }
+
+    ui->plainTextEdit->appendPlainText(QString("\n* \"Phosphorescence lifetime\" subprogram finished. %1 files has been created in D:\\Avaspec\\phosphorescence\\").arg(filesCounter));
 
     AVS_SetDigOut(m_DeviceHandle, 0, 0); // led off
 }

@@ -7,6 +7,11 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    saveDir = "C:\\";
+    ui->saveDir_label->setText(saveDir);
+
+    saveDirSingleMeasure = "C:\\";
+    ui->saveDirSingleMeasurelabel->setText(saveDirSingleMeasure);
 }
 
 MainWindow::~MainWindow()
@@ -173,7 +178,7 @@ void MainWindow::receiveMeasData()
             return;
         }
     }
-    QFile file(QString("D:\\Avaspec\\%1.txt").arg(timeLabel));
+    QFile file(saveDirSingleMeasure + QString("/%1.txt").arg(timeLabel));
     if (file.open(QIODevice::WriteOnly))
     {
         QTextStream out(&file);
@@ -395,6 +400,8 @@ void MainWindow::on_program2_pushButton_clicked() // Phosphorescence
     unsigned timeLabel = 0;
     ui->intergationTime_spinBox->setValue(integrationTime);
 
+    QString prefix = ui->phosFileName_lineEdit->text();
+
     while(integrationDelay <= finalIntegrationDelay)
     {
         prepareMeasure();
@@ -409,7 +416,7 @@ void MainWindow::on_program2_pushButton_clicked() // Phosphorescence
         QThread::msleep(integrationTime + 50);
         AVS_GetScopeData(m_DeviceHandle, &timeLabel, specData);
 
-        QFile file(QString("D:\\Avaspec\\phosphorescence\\%1_%2.txt").arg(integrationDelay).arg(repeatCounter));
+        QFile file(saveDir + "/" + prefix + QString("_%1_%2.txt").arg(integrationDelay).arg(repeatCounter));
         if (file.open(QIODevice::WriteOnly))
         {
             QTextStream out(&file);
@@ -434,5 +441,19 @@ void MainWindow::on_program2_pushButton_clicked() // Phosphorescence
     ui->plainTextEdit->appendPlainText(QString("\n* \"Phosphorescence lifetime\" subprogram finished. %1 files has been created in D:\\Avaspec\\phosphorescence\\").arg(filesCounter));
 
     AVS_SetDigOut(m_DeviceHandle, 0, 0); // led off
+}
+
+
+void MainWindow::on_selectDir_pushButton_clicked()
+{
+    saveDir = QFileDialog::getExistingDirectory(this,"Choose Folder", saveDir);
+    ui->saveDir_label->setText(saveDir);
+}
+
+
+void MainWindow::on_selectDirSingleMeasure_pushButton_clicked()
+{
+    saveDirSingleMeasure = QFileDialog::getExistingDirectory(this,"Choose Folder", saveDirSingleMeasure);
+    ui->saveDirSingleMeasurelabel->setText(saveDirSingleMeasure);
 }
 

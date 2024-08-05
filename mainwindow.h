@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QThread>
+#include <QFileDialog>
 
 #include "avaspec.h"
 #include <chrono>
@@ -54,6 +55,10 @@ private slots:
 
     void on_program2_pushButton_clicked();
 
+    void on_selectDir_pushButton_clicked();
+
+    void on_selectDirSingleMeasure_pushButton_clicked();
+
 signals:
     void dataIsAvaliableSignal(int, int);
 
@@ -68,6 +73,9 @@ private:
 
     bool mIncludeCRC;
     bool mAckDisabled;
+
+    QString saveDir;
+    QString saveDirSingleMeasure;
 
     Ui::MainWindow *ui;
 };

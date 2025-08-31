@@ -7,19 +7,15 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    saveDir = "C:\\";
-    ui->saveDir_label->setText(saveDir);
-
-    saveDirSingleMeasure = "C:\\";
-    ui->saveDirSingleMeasurelabel->setText(saveDirSingleMeasure);
+    QString dir = "C:\\";
+    ui->saveDir_label->setText(dir);
+    ui->saveDir_label_3->setText(dir);
+    ui->saveDirSingleMeasurelabel->setText(dir);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-
-    //connect(this, SIGNAL(dataIsAvaliableSignal(int,int)), this, SLOT(receiveMeasData(int, int)));
-
 }
 
 void MainWindow::on_init_Button_clicked()
@@ -118,8 +114,6 @@ void MainWindow::on_singleMeasure_Button_clicked()
 
     prepareMeasure();
     measure(l_NrOfScans, dataReceiverDelay);
-
-
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -155,7 +149,7 @@ void MainWindow::receiveMeasData()
     uint16 nrPixels;
     uint32 tempSpectrum[NUMBER_OF_PYXELS];
     int l_Res = 0;
-    unsigned timeLabel;
+    unsigned timeLabel = 0;
 
     if (mIncludeCRC)
     {
@@ -178,7 +172,9 @@ void MainWindow::receiveMeasData()
             return;
         }
     }
-    QFile file(saveDirSingleMeasure + QString("/%1.txt").arg(timeLabel));
+
+    QString dir = ui->saveDirSingleMeasurelabel->text();
+    QFile file(dir + QString("/%1.txt").arg(timeLabel));
     if (file.open(QIODevice::WriteOnly))
     {
         QTextStream out(&file);
@@ -187,14 +183,8 @@ void MainWindow::receiveMeasData()
             out << QString::number(specData[i]) << endl;
 
     }
-    file.close();
 
-//    ui->data_plainTextEdit->clear();
-//    for (int i = 0; i < NUMBER_OF_PYXELS; i++)
-//    {
-//        QString str = QString::number(specData[i]);
-//        ui->data_plainTextEdit->appendPlainText(str);
-//    }
+    file.close();
 }
 
 void MainWindow::prepareMeasure()
@@ -241,7 +231,7 @@ void MainWindow::prepareMeasure()
         return;
     }
 
-    //ui->plainTextEdit->appendPlainText("Detector has been configured successfully");
+    qDebug() << ("Detector has been configured successfully");
 }
 
 void MainWindow::measure(int numberOfMeasures, int dataReceiverDelay)
@@ -416,7 +406,8 @@ void MainWindow::on_program2_pushButton_clicked() // Phosphorescence
         QThread::msleep(integrationTime + 50);
         AVS_GetScopeData(m_DeviceHandle, &timeLabel, specData);
 
-        QFile file(saveDir + "/" + prefix + QString("_%1_%2.txt").arg(integrationDelay).arg(repeatCounter));
+        QString dir = ui->saveDir_label->text();
+        QFile file(dir + "/" + prefix + QString("_%1_%2.txt").arg(integrationDelay).arg(repeatCounter));
         if (file.open(QIODevice::WriteOnly))
         {
             QTextStream out(&file);
@@ -446,14 +437,93 @@ void MainWindow::on_program2_pushButton_clicked() // Phosphorescence
 
 void MainWindow::on_selectDir_pushButton_clicked()
 {
-    saveDir = QFileDialog::getExistingDirectory(this,"Choose Folder", saveDir);
-    ui->saveDir_label->setText(saveDir);
+    QString dir = ui->saveDir_label->text();
+    ui->saveDir_label->setText(QFileDialog::getExistingDirectory(this,"Choose Folder", dir));
 }
 
 
 void MainWindow::on_selectDirSingleMeasure_pushButton_clicked()
+{    
+    QString dir = ui->saveDirSingleMeasurelabel->text();
+    ui->saveDirSingleMeasurelabel->setText(QFileDialog::getExistingDirectory(this,"Choose Folder", dir));
+}
+
+void MainWindow::on_start_pushButton_phos_proc2_clicked()
 {
-    saveDirSingleMeasure = QFileDialog::getExistingDirectory(this,"Choose Folder", saveDirSingleMeasure);
-    ui->saveDirSingleMeasurelabel->setText(saveDirSingleMeasure);
+    const int initialIntegrationDelay = ui->initialDelay_spinBox_phos_proc2->value(); // ms
+    const unsigned short numberOfPoints = ui->numberOfPoints_spinBox_phos_proc2->value();
+    const int irradiationTime = ui->exitationTime_spinBox_phos_proc2->value(); // ms
+    const int integrationTime = ui->integrationTime_spinBox_phos_proc2->value(); // ms
+    const int repeatNumber = ui->repeatNumber_spinBox_phos_proc2->value();
+
+    ui->intergationTime_spinBox->setValue(integrationTime);
+
+    QString prefix = ui->phosFileName_lineEdit_phos_proc2->text();
+
+    prepareMeasure();
+
+    for(int repeatCounter = 0; repeatCounter < repeatNumber; ++repeatCounter)
+    {
+        // Structures for data
+        std::vector<std::vector<double>> spectralData(numberOfPoints, std::vector<double>(NUMBER_OF_PYXELS));
+        unsigned timeLabels[numberOfPoints] = {0};
+
+        // Excitation impulse
+        AVS_SetDigOut(m_DeviceHandle, 0, 1); // led on
+        QThread::msleep(irradiationTime);
+        AVS_SetDigOut(m_DeviceHandle, 0, 0); // led off
+
+        // Time gap before the measurement
+        QThread::msleep(initialIntegrationDelay);
+
+        // Measurement
+        AVS_Measure(m_DeviceHandle, 0, numberOfPoints);
+
+        // Getting the data
+        for (int j = 0; j < numberOfPoints; ++j)
+        {
+            // Waiting for data are ready to be read
+            while (AVS_PollScan(m_DeviceHandle) == 0) {
+                QThread::msleep(2);
+            }
+
+            // Read data
+            AVS_GetScopeData(m_DeviceHandle, &(timeLabels[j]), &(spectralData[j][0]));
+        }
+
+        AVS_StopMeasure(m_DeviceHandle);
+
+        // Write the data obtained to a file
+        QString dir = ui->saveDir_label_3->text();
+        QFile file(dir + "/" + prefix + QString("_%1.txt").arg(repeatCounter));
+        if (file.open(QIODevice::WriteOnly))
+        {
+            QTextStream out(&file);
+            for (int i = 0; i < numberOfPoints; ++i)
+                out << timeLabels[i] << "\t";
+            out << Qt::endl;
+
+            for (int i = 0; i < NUMBER_OF_PYXELS; ++i) {
+                for (int j = 0; j < numberOfPoints; ++j) {
+                    out << QString::number(spectralData[j][i]) << "\t";
+                }
+                out << Qt::endl;
+            }
+        }
+        file.close();
+
+        QThread::msleep(1000);
+    }
+
+    ui->plainTextEdit->appendPlainText(QString("\n* \"Phosphorescence lifetime measurement. Procedure 2\" subprogram finished. Files have been saved in D:\\Avaspec\\phosphorescence\\"));
+
+    AVS_SetDigOut(m_DeviceHandle, 0, 0); // led off
+}
+
+
+void MainWindow::on_selectDir_pushButton_phos_proc2_clicked()
+{
+    QString dir = ui->saveDir_label_3->text();
+    ui->saveDir_label_3->setText(QFileDialog::getExistingDirectory(this,"Choose Folder", dir));
 }
 

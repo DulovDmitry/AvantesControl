@@ -59,6 +59,10 @@ private slots:
 
     void on_selectDirSingleMeasure_pushButton_clicked();
 
+    void on_start_pushButton_phos_proc2_clicked();
+
+    void on_selectDir_pushButton_phos_proc2_clicked();
+
 signals:
     void dataIsAvaliableSignal(int, int);
 
@@ -73,9 +77,6 @@ private:
 
     bool mIncludeCRC;
     bool mAckDisabled;
-
-    QString saveDir;
-    QString saveDirSingleMeasure;
 
     Ui::MainWindow *ui;
 };
